@@ -14,6 +14,7 @@ use namespace::clean -except => 'meta';
 
 with 'MooseX::Emulate::Class::Accessor::Fast';
 
+has env => (is => 'rw');
 has action => (is => 'rw');
 has address => (is => 'rw');
 has arguments => (is => 'rw', default => sub { [] });
