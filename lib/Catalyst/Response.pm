@@ -3,6 +3,7 @@ package Catalyst::Response;
 use Moose;
 use HTTP::Headers;
 use Moose::Util::TypeConstraints;
+use B ();
 use namespace::autoclean;
 
 with 'MooseX::Emulate::Class::Accessor::Fast';
@@ -26,7 +27,20 @@ has _writer => (
     predicate => '_has_writer',
 );
 
-sub DEMOLISH { $_[0]->_writer->close if $_[0]->_has_writer }
+sub DEMOLISH {
+    my ($self) = @_;
+    return unless $self->_has_writer;
+    # Normally we want to close the writer here as the response is being destroyed
+    # as it's the end of the request..
+    # However a user using an event based server (e.g. Twiggy) may have closed
+    # over the writer themselves, in which case closing it here will ruin their day
+    # when they try to write content subsequently.
+    # Ergo we only do the close if the only reference to the writer is the one we
+    # hold - if the user grabbed the writer themselves, they're responsible!
+    if (B::svref_2object( $self->_writer )->REFCNT == 1) {
+        $self->_writer->close;
+    }
+}
 
 has cookies   => (is => 'rw', default => sub { {} });
 has body      => (is => 'rw', default => undef);
